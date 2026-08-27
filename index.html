@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090d14">
+<title>Motaz SPX Dashboard</title>
+<style>
+:root{
+  --bg:#090d14;--card:#121925;--line:#202a38;--txt:#f6f8fc;
+  --muted:#8f9bad;--call:#37d67a;--put:#ff5d79;--gold:#f5c84c
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,Arial,sans-serif
+}
+.wrap{max-width:720px;margin:auto;padding:14px 12px 40px}
+.brand{text-align:center;padding:10px 0 17px}
+.brand h1{margin:0;font-size:24px}
+.brand small{display:block;color:var(--muted);margin-top:5px}
+.hero,.topbox,.block{background:var(--card);border:1px solid var(--line);border-radius:22px}
+.hero{padding:18px}
+.top{display:flex;justify-content:space-between}
+.tag{color:var(--muted);font-weight:800;font-size:13px}
+.delayed{color:var(--gold);font-size:12px}
+.price{font-size:42px;font-weight:900;margin-top:7px;direction:ltr;text-align:right}
+.change{font-weight:800;direction:ltr;text-align:right}
+.meta{font-size:12px;color:var(--muted);margin-top:9px}
+
+.topbox{margin-top:14px;overflow:hidden}
+.topbox h2,.block h2{
+  margin:0;padding:14px 15px;border-bottom:1px solid var(--line);font-size:15px
+}
+.liqrow{
+  display:grid;grid-template-columns:.55fr 1fr .9fr 1.25fr;
+  align-items:center;padding:14px 11px;border-top:1px solid var(--line);gap:5px
+}
+.liqrow:first-of-type{border-top:0}
+.rank{font-weight:900;color:var(--gold);text-align:center}
+.contract{font-size:17px;font-weight:900;text-align:center;direction:ltr}
+.calltxt{color:var(--call)}
+.puttxt{color:var(--put)}
+.num{text-align:center;direction:ltr;font-variant-numeric:tabular-nums}
+.bigvol{font-weight:900}
+.concentration{
+  display:flex;justify-content:center;align-items:center;gap:10px;
+  padding:12px;border-top:1px solid var(--line);font-weight:900;font-size:13px
+}
+.badge{
+  padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.05)
+}
+.badge.call{color:var(--call)}
+.badge.put{color:var(--put)}
+.bias{color:var(--muted)}
+
+.block{margin-top:14px;overflow:hidden}
+.block h2{display:flex;justify-content:space-between}
+.call h2 .side{color:var(--call)}
+.put h2 .side{color:var(--put)}
+.head,.row{
+  display:grid;grid-template-columns:1.1fr 1fr 1.25fr 1fr;
+  gap:6px;align-items:center;padding:12px 10px
+}
+.head{font-size:11px;color:var(--muted)}
+.row{border-top:1px solid var(--line)}
+.strike{font-size:16px;font-weight:900}
+.vol{font-weight:900}
+.empty{padding:18px;text-align:center;color:var(--muted)}
+.foot{text-align:center;color:var(--muted);font-size:11px;margin-top:14px}
+</style>
+</head>
+
+<body>
+<main class="wrap">
+  <div class="brand">
+    <h1>Motaz SPX Dashboard</h1>
+    <small>0DTE Liquidity Monitor</small>
+  </div>
+
+  <section class="hero">
+    <div class="top">
+      <div class="tag">SPX · 0DTE · VOLUME ≥ 50K</div>
+      <div class="delayed">DELAYED DATA</div>
+    </div>
+    <div id="price" class="price">—</div>
+    <div id="change" class="change">—</div>
+    <div id="meta" class="meta">جاري التحميل...</div>
+  </section>
+
+  <section class="topbox">
+    <h2>🔥 أقوى 4 عقود — أعلى سيولة</h2>
+    <div id="top4"></div>
+    <div id="concentration" class="concentration"></div>
+  </section>
+
+  <section class="block call">
+    <h2><span class="side">CALLS</span><span>50K+</span></h2>
+    <div class="head">
+      <div class="num">Strike</div><div class="num">السعر</div>
+      <div class="num">Volume</div><div class="num">OI</div>
+    </div>
+    <div id="calls"></div>
+  </section>
+
+  <section class="block put">
+    <h2><span class="side">PUTS</span><span>50K+</span></h2>
+    <div class="head">
+      <div class="num">Strike</div><div class="num">السعر</div>
+      <div class="num">Volume</div><div class="num">OI</div>
+    </div>
+    <div id="puts"></div>
+  </section>
+
+  <div class="foot">تحديث تلقائي كل 60 ثانية · البيانات المجانية قد تكون متأخرة</div>
+</main>
+
+<script>
+const fmt=(v,d=2)=>v==null?"—":Number(v).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
+const fi=v=>v==null?"—":Number(v).toLocaleString("en-US",{maximumFractionDigits:0});
+
+function rows(a){
+  if(!a?.length) return '<div class="empty">لا يوجد عقد وصل 50K حاليًا</div>';
+  return a.map(x=>`
+    <div class="row">
+      <div class="num strike">${fmt(x.strike,0)}</div>
+      <div class="num">$${fmt(x.price)}</div>
+      <div class="num vol">${fi(x.volume)}</div>
+      <div class="num">${fi(x.open_interest)}</div>
+    </div>`).join("");
+}
+
+function top4(a){
+  if(!a?.length) return '<div class="empty">لا توجد عقود 50K+ حاليًا</div>';
+  return a.map((x,i)=>`
+    <div class="liqrow">
+      <div class="rank">#${i+1}</div>
+      <div class="contract ${x.side==="CALL"?"calltxt":"puttxt"}">
+        ${fmt(x.strike,0)}${x.side==="CALL"?"C":"P"}
+      </div>
+      <div class="num">$${fmt(x.price)}</div>
+      <div class="num bigvol">${fi(x.volume)}</div>
+    </div>`).join("");
+}
+
+function concentration(calls,puts){
+  let label="MIXED";
+  if(calls===4) label="CALL DOMINANT";
+  else if(puts===4) label="PUT DOMINANT";
+  else if(calls>puts) label="CALL HEAVY";
+  else if(puts>calls) label="PUT HEAVY";
+
+  return `
+    <span class="badge call">${calls} CALL</span>
+    <span class="bias">${label}</span>
+    <span class="badge put">${puts} PUT</span>`;
+}
+
+async function refresh(){
+  try{
+    let r=await fetch("/api/dashboard",{cache:"no-store"});
+    let d=await r.json();
+    if(!d.ok) throw Error(d.error||"خطأ");
+
+    document.getElementById("price").textContent=fmt(d.spx_price);
+
+    let ch=Number(d.change||0), pct=Number(d.change_pct||0);
+    let ce=document.getElementById("change");
+    ce.textContent=`${ch>=0?"+":""}${fmt(ch)} (${pct>=0?"+":""}${fmt(pct)}%)`;
+    ce.style.color=ch>=0?"#37d67a":"#ff5d79";
+
+    let t=d.market_time?new Date(d.market_time):new Date();
+    let tt=t.toLocaleTimeString("en-US",{
+      hour:"2-digit",minute:"2-digit",second:"2-digit",
+      timeZone:"America/New_York"
+    });
+
+    document.getElementById("meta").textContent=d.expiration
+      ? `Expiration ${d.expiration} · New York ${tt}`
+      : `${d.message||""} · New York ${tt}`;
+
+    document.getElementById("top4").innerHTML=top4(d.top4);
+    document.getElementById("concentration").innerHTML=concentration(d.top4_calls||0,d.top4_puts||0);
+    document.getElementById("calls").innerHTML=rows(d.calls);
+    document.getElementById("puts").innerHTML=rows(d.puts);
+
+  }catch(e){
+    document.getElementById("meta").textContent=e.message;
+  }
+}
+
+refresh();
+setInterval(refresh,60000);
+</script>
+</body>
+</html>
